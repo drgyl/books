@@ -1,5 +1,5 @@
 import sqlite3
-# from datetime import datetime
+from datetime import datetime
 
 def init_db(db_name):
     """

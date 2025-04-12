@@ -34,7 +34,7 @@ class LibraryHandler(BaseHTTPRequestHandler):
             borrower_id = path.split('/')[-1]
             self.handle_borrowed_books(borrower_id)
         else:
-            self.send_error(404, "Path not found")
+            self.send_error(400, "Path not found")
 
     def do_POST(self):
         """
@@ -45,23 +45,59 @@ class LibraryHandler(BaseHTTPRequestHandler):
         - `/borrowers`: Creates a new borrower.
         - `/borrow`: Records a book borrowing event.
         """
+        try:
+            # print(f'POST request processing {self.headers}...')
+            content_length = int(self.headers.get('Content-Length', 0))  # Get the length of the request body
+            # print(f'content length = {content_length}...')
+            if content_length <= 2:
+                raise ValueError("Invalid JSON format")
+            
+            post_data = self.rfile.read(content_length)  # Read the request body
+            # print(f'post data = {post_data}, len={len(post_data)}...')
+            # print(f'post data decode {post_data.decode('utf-8')}...')
+            if not post_data:  # Check if the body is empty
+                raise ValueError("Invalid JSON format")
 
-        # print(f'POST request processing {self.headers}...')
-        content_length = int(self.headers['Content-Length'])  # Get the length of the request body
-        # print(f'content length = {content_length}...')
-        post_data = self.rfile.read(content_length)  # Read the request body
-        # print(f'post data = {post_data}...')
-        # print(f'post data decode {post_data.decode('utf-8')}')
-        body = json.loads(post_data.decode('utf-8'))  # Parse the JSON body
-        # print(f'body = {body}')
+            body = json.loads(post_data.decode('utf-8'))  # Parse the JSON body
+            # print(f'body = {body}')
+            if not isinstance(body, dict):  # Ensure the parsed body is a dictionary
+                raise ValueError("Invalid JSON format")
+        except (ValueError, json.JSONDecodeError):
+            self.send_error(400, "Invalid JSON format")
+            return
+    
         if self.path == '/books':
-            self.handle_add_book(body)
+            # if all(key in body for key in ['title', 'author']):
+            if body.get('title') and body.get('author'):
+                self.handle_add_book(body)
+            elif not body.get('title') and body.get('author'):
+                self.send_error(400, "Invalid request body, missing Title")
+            elif not body.get('author') and body.get('title'):
+                self.send_error(400, "Invalid request body, missing Author")                
+            else:
+                self.send_error(400, "Invalid request body, no valid data provided")                
+            
         elif self.path == '/borrowers':
-            self.handle_create_borrower(body)
+            if body.get('name') and body.get('email'):
+                self.handle_create_borrower(body)
+            elif not body.get('name') and body.get('email'):
+                self.send_error(400, "Invalid request body, missing Name")
+            elif not body.get('email') and body.get('name'):
+                self.send_error(400, "Invalid request body, missing Email")                
+            else:
+                self.send_error(400, "Invalid request body, no valid data provided")                
+
         elif self.path == '/borrow':
-            self.handle_borrow_book(body)
+            if body.get('borrower_id') and body.get('book_id'):
+                self.handle_borrow_book(body)
+            elif not body.get('borrower_id') and body.get('book_id'):
+                self.send_error(400, "Invalid request body, missing Borrower ID")                
+            elif not body.get('book_id') and body.get('borrower_id'):
+                self.send_error(400, "Invalid request body, missing Book ID")                
+            else:
+                self.send_error(400, "Invalid request body, no valid data provided")
         else:
-            self.send_error(404, "Path not found")
+            self.send_error(400, "Path not found")
 
     def handle_list_books(self):
         """
@@ -82,13 +118,11 @@ class LibraryHandler(BaseHTTPRequestHandler):
                 for row in c.fetchall()]  # Convert rows to dictionaries
         conn.close()  # Close the database connection
         
-        # Send the response
-        self.send_response(200)
+        self.send_response(200) # Send the response
         self.send_header('Content-Type', 'application/json')
         self.end_headers()
         self.wfile.write(json.dumps(books).encode())  # Write the JSON response
 
-    # Add other handler methods here...
     def handle_get_borrower(self, borrower_id):
         """
         Retrieves and sends details of a specific borrower.
@@ -103,20 +137,20 @@ class LibraryHandler(BaseHTTPRequestHandler):
             "email": <str>
         }
         """
-        conn = sqlite3.connect(DATABASE_NAME)  # Connect to the database
+        conn = sqlite3.connect(DATABASE_NAME)
         c = conn.cursor()
         c.execute('SELECT * FROM borrowers WHERE id = ?', (borrower_id,))  # Query the borrower by ID
-        row = c.fetchone()  # Fetch the result
-        conn.close()  # Close the database connection
+        row = c.fetchone()
+        conn.close()
 
         if row:  # If a borrower is found
             borrower = {'id': row[0], 'name': row[1], 'email': row[2]}  # Convert row to dictionary
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps(borrower).encode())  # Write the JSON response
+            self.wfile.write(json.dumps(borrower).encode())
         else:  # If no borrower is found
-            self.send_error(404, "Borrower not found")
+            self.send_error(400, "Borrower not found")
 
     def handle_borrowed_books(self, borrower_id):
         """
@@ -132,7 +166,7 @@ class LibraryHandler(BaseHTTPRequestHandler):
             "author": <str>
         }
         """
-        conn = sqlite3.connect(DATABASE_NAME)  # Connect to the database
+        conn = sqlite3.connect(DATABASE_NAME)
         c = conn.cursor()
         c.execute('''
             SELECT books.id, books.title, books.author
@@ -141,13 +175,13 @@ class LibraryHandler(BaseHTTPRequestHandler):
             WHERE borrowed_books.borrower_id = ?
         ''', (borrower_id,))  # Query borrowed books by borrower ID
         books = [{'id': row[0], 'title': row[1], 'author': row[2]} for row in c.fetchall()]  # Convert rows to dictionaries
-        conn.close()  # Close the database connection
+        conn.close()
 
         if books:  # If borrowed books are found
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps(books).encode())  # Write the JSON response
+            self.wfile.write(json.dumps(books).encode())
         else:  # If no borrowed books are found
             self.send_error(404, "No borrowed books found for this borrower")
 
@@ -186,14 +220,14 @@ class LibraryHandler(BaseHTTPRequestHandler):
                   (title, author, False))  # Insert the new book
         book_id = c.lastrowid  # Get the ID of the inserted book
         conn.commit()  # Commit the transaction
-        conn.close()  # Close the database connection
+        conn.close()
 
         # Prepare the response
         book = {'id': book_id, 'title': title, 'author': author, 'is_borrowed': False}
         self.send_response(201)  # Send a 201 Created status
         self.send_header('Content-Type', 'application/json')
         self.end_headers()
-        self.wfile.write(json.dumps(book).encode())  # Write the JSON response
+        self.wfile.write(json.dumps(book).encode())
 
     def handle_create_borrower(self, body):
         """
@@ -222,19 +256,19 @@ class LibraryHandler(BaseHTTPRequestHandler):
             self.send_error(400, "Name and email are required")
             return
 
-        conn = sqlite3.connect(DATABASE_NAME)  # Connect to the database
+        conn = sqlite3.connect(DATABASE_NAME)
         c = conn.cursor()
         c.execute('INSERT INTO borrowers (name, email) VALUES (?, ?)', (name, email))  # Insert the new borrower
         borrower_id = c.lastrowid  # Get the ID of the inserted borrower
-        conn.commit()  # Commit the transaction
-        conn.close()  # Close the database connection
+        conn.commit()
+        conn.close()
 
         # Prepare the response
         borrower = {'id': borrower_id, 'name': name, 'email': email}
         self.send_response(201)  # Send a 201 Created status
         self.send_header('Content-Type', 'application/json')
         self.end_headers()
-        self.wfile.write(json.dumps(borrower).encode())  # Write the JSON response
+        self.wfile.write(json.dumps(borrower).encode())
 
     def handle_borrow_book(self, body):
         """
@@ -262,7 +296,7 @@ class LibraryHandler(BaseHTTPRequestHandler):
             self.send_error(400, "Borrower ID and Book ID are required")
             return
 
-        conn = sqlite3.connect(DATABASE_NAME)  # Connect to the database
+        conn = sqlite3.connect(DATABASE_NAME)
         c = conn.cursor()
 
         # Check if the book is already borrowed
@@ -280,15 +314,15 @@ class LibraryHandler(BaseHTTPRequestHandler):
         # Record the borrowing event
         c.execute('INSERT INTO borrowed_books (borrower_id, book_id) VALUES (?, ?)', (borrower_id, book_id))
         c.execute('UPDATE books SET is_borrowed = ? WHERE id = ?', (True, book_id))  # Mark the book as borrowed
-        conn.commit() # Commit the transaction
-        conn.close()  # Close the database connection
+        conn.commit()
+        conn.close() 
 
         # Prepare the response
         borrowing_event = {'borrower_id': borrower_id, 'book_id': book_id}
         self.send_response(201)  # Send a 201 Created status
         self.send_header('Content-Type', 'application/json')
         self.end_headers()
-        self.wfile.write(json.dumps(borrowing_event).encode())  # Write the JSON response
+        self.wfile.write(json.dumps(borrowing_event).encode())
 
 def run_server(port=8888):
     """
