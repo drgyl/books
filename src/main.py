@@ -1,9 +1,90 @@
+"""
+main.py
+=======
+
+This module implements the HTTP server for the Library Management System. It handles
+HTTP GET and POST requests to manage books, borrowers, and borrowed books. The server
+interacts with an SQLite database to perform CRUD operations and enforce data integrity.
+
+Features:
+---------
+- Handles the following HTTP routes:
+  1. `/books`:
+     - GET: Lists all books in the library.
+     - POST: Adds a new book to the library.
+  2. `/borrowers`:
+     - GET: Retrieves details of a specific borrower.
+     - POST: Creates a new borrower.
+  3. `/borrowed-books`:
+     - GET: Retrieves books borrowed by a specific borrower.
+     - POST: Records a book borrowing event.
+
+- Validates request bodies and query parameters.
+- Returns appropriate HTTP status codes and error messages for invalid requests.
+- Enforces foreign key constraints and data integrity using SQLite.
+
+Functions:
+----------
+- `run_server(port=8888)`: Starts the HTTP server on the specified port.
+- `LibraryHandler`: Handles HTTP requests and routes them to the appropriate methods.
+
+Dependencies:
+-------------
+- http.server: For creating the HTTP server.
+- sqlite3: For database operations.
+- json: For parsing and generating JSON responses.
+- urllib.parse: For parsing query parameters.
+
+Usage:
+------
+Run this module directly to start the server:
+>>> python main.py
+
+Example:
+--------
+1. Start the server:
+   >>> python main.py
+   Starting server on port 8888...
+
+2. Use an HTTP client (e.g., `curl` or Postman) to interact with the server:
+
+   - List all books:
+     >>> curl -X GET http://localhost:8888/books
+
+   - Add a new book:
+     >>> curl -X POST http://localhost:8888/books -H "Content-Type: application/json" -d '{"title": "Python Basics", "author": "John Doe"}'
+
+   - List all borrowers:
+     >>> curl -X GET http://localhost:8888/borrowers
+
+   - Add a new borrower:
+     >>> curl -X POST http://localhost:8888/borrowers -H "Content-Type: application/json" -d '{"name": "Jane Smith", "email": "jane.smith@example.com"}'
+
+   - Get details of a specific borrower:
+     >>> curl -X GET http://localhost:8888/borrowers/1
+
+   - List books borrowed by a specific borrower:
+     >>> curl -X GET http://localhost:8888/borrowed-books/1
+
+   - Record a book borrowing event:
+     >>> curl -X POST http://localhost:8888/borrowed-books -H "Content-Type: application/json" -d '{"borrower_id": 1, "book_id": 2}'
+"""
+
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 import sqlite3
 from urllib.parse import parse_qs, urlparse
 
 DATABASE_NAME = 'library.db'
+DEFAULT_PORT = 8888
+
+BOOKS_PATH = "/books"
+BORROWERS_PATH = "/borrowers"
+BORROWED_PATH = "/borrowed-books"
+
+INVALID_JSON_ERROR = "Invalid JSON format"
+PATH_NOT_FOUND_ERROR = "Path not found"
+MAX_CONTENT_LENGTH = 1024 * 1024  # 1 MB
 
 class LibraryHandler(BaseHTTPRequestHandler):
     """
@@ -12,6 +93,12 @@ class LibraryHandler(BaseHTTPRequestHandler):
     This class handles GET and POST requests to manage books, borrowers, and borrowed books.
     It interacts with the SQLite database to perform CRUD operations.
     """
+
+    def send_json_response(self, status_code, data):
+        self.send_response(status_code)
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode())
 
     def do_GET(self):
         """
@@ -25,16 +112,22 @@ class LibraryHandler(BaseHTTPRequestHandler):
         parsed_path = urlparse(self.path)
         path = parsed_path.path
         
-        if path == '/books':
+        if path == BOOKS_PATH:
             self.handle_list_books()
-        elif path.startswith('/borrower/'):
+        elif path.startswith(BORROWERS_PATH):
             borrower_id = path.split('/')[-1]
-            self.handle_get_borrower(borrower_id)
-        elif path.startswith('/borrowed-books/'):
+            if not borrower_id.isdigit():
+                self.send_error(400, "Invalid borrower ID format")
+            else:          
+                self.handle_get_borrower(borrower_id)
+        elif path.startswith(BORROWED_PATH):
             borrower_id = path.split('/')[-1]
-            self.handle_borrowed_books(borrower_id)
+            if not borrower_id.isdigit():
+                self.send_error(400, "Invalid borrower ID format")
+            else:          
+                self.handle_borrowed_books(borrower_id)
         else:
-            self.send_error(400, "Path not found")
+            self.send_error(400, PATH_NOT_FOUND_ERROR)
 
     def do_POST(self):
         """
@@ -50,23 +143,25 @@ class LibraryHandler(BaseHTTPRequestHandler):
             content_length = int(self.headers.get('Content-Length', 0))  # Get the length of the request body
             # print(f'content length = {content_length}...')
             if content_length <= 2:
-                raise ValueError("Invalid JSON format")
-            
+                raise ValueError(INVALID_JSON_ERROR)
+            elif content_length > MAX_CONTENT_LENGTH:
+                self.send_error(413, "Request body too large")
+                return
             post_data = self.rfile.read(content_length)  # Read the request body
             # print(f'post data = {post_data}, len={len(post_data)}...')
             # print(f'post data decode {post_data.decode('utf-8')}...')
             if not post_data:  # Check if the body is empty
-                raise ValueError("Invalid JSON format")
+                raise ValueError(INVALID_JSON_ERROR)
 
             body = json.loads(post_data.decode('utf-8'))  # Parse the JSON body
             # print(f'body = {body}')
             if not isinstance(body, dict):  # Ensure the parsed body is a dictionary
-                raise ValueError("Invalid JSON format")
+                raise ValueError(INVALID_JSON_ERROR)
         except (ValueError, json.JSONDecodeError):
-            self.send_error(400, "Invalid JSON format")
+            self.send_error(400, INVALID_JSON_ERROR )
             return
     
-        if self.path == '/books':
+        if self.path == BOOKS_PATH:
             # if all(key in body for key in ['title', 'author']):
             if body.get('title') and body.get('author'):
                 self.handle_add_book(body)
@@ -77,7 +172,7 @@ class LibraryHandler(BaseHTTPRequestHandler):
             else:
                 self.send_error(400, "Invalid request body, no valid data provided")                
             
-        elif self.path == '/borrowers':
+        elif self.path == BORROWERS_PATH:
             if body.get('name') and body.get('email'):
                 self.handle_create_borrower(body)
             elif not body.get('name') and body.get('email'):
@@ -87,7 +182,7 @@ class LibraryHandler(BaseHTTPRequestHandler):
             else:
                 self.send_error(400, "Invalid request body, no valid data provided")                
 
-        elif self.path == '/borrow':
+        elif self.path == BORROWED_PATH:
             if body.get('borrower_id') and body.get('book_id'):
                 self.handle_borrow_book(body)
             elif not body.get('borrower_id') and body.get('book_id'):
@@ -97,7 +192,7 @@ class LibraryHandler(BaseHTTPRequestHandler):
             else:
                 self.send_error(400, "Invalid request body, no valid data provided")
         else:
-            self.send_error(400, "Path not found")
+            self.send_error(400, PATH_NOT_FOUND_ERROR)
 
     def handle_list_books(self):
         """
@@ -111,17 +206,14 @@ class LibraryHandler(BaseHTTPRequestHandler):
             "is_borrowed": <bool>
         }
         """
-        conn = sqlite3.connect(DATABASE_NAME)  # Connect to the database
-        c = conn.cursor()
-        c.execute('SELECT * FROM books')  # Query all books
-        books = [{'id': row[0], 'title': row[1], 'author': row[2], 'is_borrowed': bool(row[3])} 
+
+        with sqlite3.connect(DATABASE_NAME) as conn:
+            conn.execute("PRAGMA foreign_keys = ON;")  # Enable foreign key constraints        
+            c = conn.cursor()
+            c.execute('SELECT * FROM books')  # Query all books
+            books = [{'id': row[0], 'title': row[1], 'author': row[2], 'is_borrowed': bool(row[3])} 
                 for row in c.fetchall()]  # Convert rows to dictionaries
-        conn.close()  # Close the database connection
-        
-        self.send_response(200) # Send the response
-        self.send_header('Content-Type', 'application/json')
-        self.end_headers()
-        self.wfile.write(json.dumps(books).encode())  # Write the JSON response
+            self.send_json_response(200, books)
 
     def handle_get_borrower(self, borrower_id):
         """
@@ -137,20 +229,18 @@ class LibraryHandler(BaseHTTPRequestHandler):
             "email": <str>
         }
         """
-        conn = sqlite3.connect(DATABASE_NAME)
-        c = conn.cursor()
-        c.execute('SELECT * FROM borrowers WHERE id = ?', (borrower_id,))  # Query the borrower by ID
-        row = c.fetchone()
-        conn.close()
 
-        if row:  # If a borrower is found
-            borrower = {'id': row[0], 'name': row[1], 'email': row[2]}  # Convert row to dictionary
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps(borrower).encode())
-        else:  # If no borrower is found
-            self.send_error(400, "Borrower not found")
+        with sqlite3.connect(DATABASE_NAME) as conn:
+            conn.execute("PRAGMA foreign_keys = ON;")  # Enable foreign key constraints        
+            c = conn.cursor()
+            c.execute('SELECT * FROM borrowers WHERE id = ?', (borrower_id,))  # Query the borrower by ID
+            row = c.fetchone()
+
+            if row:  # If a borrower is found
+                borrower = {'id': row[0], 'name': row[1], 'email': row[2]}  # Convert row to dictionary
+                self.send_json_response(200, borrower)
+            else:  # If no borrower is found
+                self.send_error(404, "Borrower not found")
 
     def handle_borrowed_books(self, borrower_id):
         """
@@ -166,24 +256,22 @@ class LibraryHandler(BaseHTTPRequestHandler):
             "author": <str>
         }
         """
-        conn = sqlite3.connect(DATABASE_NAME)
-        c = conn.cursor()
-        c.execute('''
-            SELECT books.id, books.title, books.author
-            FROM books
-            INNER JOIN borrowed_books ON books.id = borrowed_books.book_id
-            WHERE borrowed_books.borrower_id = ?
-        ''', (borrower_id,))  # Query borrowed books by borrower ID
-        books = [{'id': row[0], 'title': row[1], 'author': row[2]} for row in c.fetchall()]  # Convert rows to dictionaries
-        conn.close()
 
-        if books:  # If borrowed books are found
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps(books).encode())
-        else:  # If no borrowed books are found
-            self.send_error(404, "No borrowed books found for this borrower")
+        with sqlite3.connect(DATABASE_NAME) as conn:
+            conn.execute("PRAGMA foreign_keys = ON;")  # Enable foreign key constraints        
+            c = conn.cursor()
+            c.execute('''
+                SELECT books.id, books.title, books.author
+                FROM books
+                INNER JOIN borrowed_books ON books.id = borrowed_books.book_id
+                WHERE borrowed_books.borrower_id = ?
+                ''', (borrower_id,))  # Query borrowed books by borrower ID
+            books = [{'id': row[0], 'title': row[1], 'author': row[2]} for row in c.fetchall()]  # Convert rows to dictionaries
+    
+            if books:  # If borrowed books are found
+                self.send_json_response(200, books)
+            else:  # If no borrowed books are found
+                self.send_error(404, "No borrowed books found for this borrower")
 
     def handle_add_book(self, body):
         """
@@ -214,20 +302,19 @@ class LibraryHandler(BaseHTTPRequestHandler):
             self.send_error(400, "Title and author are required")
             return
 
-        conn = sqlite3.connect(DATABASE_NAME)  # Connect to the database
-        c = conn.cursor()
-        c.execute('INSERT INTO books (title, author, is_borrowed) VALUES (?, ?, ?)', 
+        with sqlite3.connect(DATABASE_NAME) as conn:
+            conn.execute("PRAGMA foreign_keys = ON;")  # Enable foreign key constraints
+            c = conn.cursor()
+            c.execute('INSERT INTO books (title, author, is_borrowed) VALUES (?, ?, ?)', 
                   (title, author, False))  # Insert the new book
-        book_id = c.lastrowid  # Get the ID of the inserted book
-        conn.commit()  # Commit the transaction
-        conn.close()
+            book_id = c.lastrowid  # Get the ID of the inserted book
+            if not book_id.isdigit():
+                self.send_error(400, "Invalid book ID format") 
+                return           
 
-        # Prepare the response
-        book = {'id': book_id, 'title': title, 'author': author, 'is_borrowed': False}
-        self.send_response(201)  # Send a 201 Created status
-        self.send_header('Content-Type', 'application/json')
-        self.end_headers()
-        self.wfile.write(json.dumps(book).encode())
+            # Prepare the response
+            book = {'id': book_id, 'title': title, 'author': author, 'is_borrowed': False}
+            self.send_json_response(201, book)
 
     def handle_create_borrower(self, body):
         """
@@ -256,19 +343,15 @@ class LibraryHandler(BaseHTTPRequestHandler):
             self.send_error(400, "Name and email are required")
             return
 
-        conn = sqlite3.connect(DATABASE_NAME)
-        c = conn.cursor()
-        c.execute('INSERT INTO borrowers (name, email) VALUES (?, ?)', (name, email))  # Insert the new borrower
-        borrower_id = c.lastrowid  # Get the ID of the inserted borrower
-        conn.commit()
-        conn.close()
+        with sqlite3.connect(DATABASE_NAME) as conn:
+            conn.execute("PRAGMA foreign_keys = ON;")  # Enable foreign key constraints        
+            c = conn.cursor()
+            c.execute('INSERT INTO borrowers (name, email) VALUES (?, ?)', (name, email))  # Insert the new borrower
+            borrower_id = c.lastrowid  # Get the ID of the inserted borrower
 
-        # Prepare the response
-        borrower = {'id': borrower_id, 'name': name, 'email': email}
-        self.send_response(201)  # Send a 201 Created status
-        self.send_header('Content-Type', 'application/json')
-        self.end_headers()
-        self.wfile.write(json.dumps(borrower).encode())
+            # Prepare the response
+            borrower = {'id': borrower_id, 'name': name, 'email': email}
+            self.send_json_response(201, borrower)
 
     def handle_borrow_book(self, body):
         """
@@ -295,36 +378,39 @@ class LibraryHandler(BaseHTTPRequestHandler):
         if not borrower_id or not book_id:  # Validate input
             self.send_error(400, "Borrower ID and Book ID are required")
             return
-
-        conn = sqlite3.connect(DATABASE_NAME)
-        c = conn.cursor()
-
-        # Check if the book is already borrowed
-        c.execute('SELECT is_borrowed FROM books WHERE id = ?', (book_id,))
-        book = c.fetchone()
-        if not book:
-            self.send_error(404, "Book not found")
-            conn.close()
+        
+        if not borrower_id.isdigit():
+            self.send_error(400, "Invalid borrower ID format")
             return
-        if book[0]:  # If the book is already borrowed
-            self.send_error(400, "Book is already borrowed")
-            conn.close()
-            return
+        if not book_id.isdigit():
+            self.send_error(400, "Invalid book ID format") 
+            return      
+            
+        with sqlite3.connect(DATABASE_NAME) as conn:
+            conn.execute("PRAGMA foreign_keys = ON;")  # Enable foreign key constraints        
+            c = conn.cursor()
 
-        # Record the borrowing event
-        c.execute('INSERT INTO borrowed_books (borrower_id, book_id) VALUES (?, ?)', (borrower_id, book_id))
-        c.execute('UPDATE books SET is_borrowed = ? WHERE id = ?', (True, book_id))  # Mark the book as borrowed
-        conn.commit()
-        conn.close() 
+            # Check if the book is already borrowed
+            c.execute('SELECT is_borrowed FROM books WHERE id = ?', (book_id,))
+            book = c.fetchone()
+            if not book:
+                self.send_error(404, "Book not found")
+                conn.close()
+                return
+            if book[0]:  # If the book is already borrowed
+                self.send_error(400, "Book is already borrowed")
+                conn.close()
+                return
 
-        # Prepare the response
-        borrowing_event = {'borrower_id': borrower_id, 'book_id': book_id}
-        self.send_response(201)  # Send a 201 Created status
-        self.send_header('Content-Type', 'application/json')
-        self.end_headers()
-        self.wfile.write(json.dumps(borrowing_event).encode())
+            # Record the borrowing event
+            c.execute('INSERT INTO borrowed_books (borrower_id, book_id) VALUES (?, ?)', (borrower_id, book_id))
+            c.execute('UPDATE books SET is_borrowed = ? WHERE id = ?', (True, book_id))  # Mark the book as borrowed
 
-def run_server(port=8888):
+            # Prepare the response
+            borrowing_event = {'borrower_id': borrower_id, 'book_id': book_id}
+            self.send_json_response(201, borrowing_event)
+
+def run_server(port=DEFAULT_PORT):
     """
     Starts the HTTP server for the library system.
 
