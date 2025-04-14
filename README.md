@@ -61,10 +61,10 @@ The **Library Management System** is a Python-based application that provides an
 
     - "http.request.duration.ms"
 
-        Type: Histogram
+        Type: HistogramXXX
 
         Description: Measures the duration of HTTP requests in milliseconds.
-        
+
         Attributes:
             - http.method: The HTTP method (GET, POST).
             - http.route: The requested route (e.g., /books, /borrowers).
