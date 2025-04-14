@@ -35,16 +35,18 @@ The **Library Management System** is a Python-based application that provides an
 
 - **Testing**:
   - `pytest`: For unit testing.
-  - `unittest.mock`: For mocking methods and objects as well as buiding integration testing
+  - `unittest`: For mocking methods and objects as well as buiding integration testing
 
 - **OpenTelemetry**:
+
     ***Spans***:
     - HTTP spans: "HTTP GET" and "HTTP POST" to capture lifecycle of HTTP requests, including route handling and response generation
 
-    - DB spans: capturing all database queries. tracking the execution and ensuring proper database interaction ("ListBooksQuery", "ListBorrowerQuery", "GetBorrowerQuery", "AddBookQuery", :CreateBorrowerQuery", "BorrowBookQuery")
+    - DB spans: capturing all database queries. tracking the execution and ensuring proper database interaction ("ListBooksQuery", "ListBorrowerQuery", "GetBorrowerQuery", "AddBookQuery", "CreateBorrowerQuery", "BorrowBookQuery")
 
     ***Metrics***:
     - "http.server.requests"
+
         Type: Counter
         Description: Counts the total number of HTTP requests handled by the server.
         Attributes:
@@ -55,6 +57,7 @@ The **Library Management System** is a Python-based application that provides an
         Purpose: Tracks the volume of HTTP requests and categorizes them by status code.
 
     - "http.request.duration.ms"
+
         Type: Histogram
         Description: Measures the duration of HTTP requests in milliseconds.
         Attributes:
@@ -64,6 +67,7 @@ The **Library Management System** is a Python-based application that provides an
         Purpose: Provides insights into the performance of HTTP request handling.
 
     - "db.connections.active"
+    
         Type: UpDownCounter
         Description: Tracks the number of active SQLite database connections.
         Attributes:
@@ -94,12 +98,12 @@ The **Library Management System** is a Python-based application that provides an
 
 Run the unit tests using pytest:
 
-    ```bash
+    ```
     pytest -v tests/
     ```
 Run the integration tests using python:
 
-    ```bash
+    ```
     python -m unittest tests/test_integration.py -v
     ```    
 
@@ -124,7 +128,7 @@ library-management-system/
 
 Run the following command to start the server:
 
-    ```bash
+    ```
     python src/main.py
     ```
 
@@ -179,13 +183,13 @@ Use an HTTP client (e.g., `curl`, `PowerShell` or `Postman`) to interact with th
 ```
     - GET: List all books
 
-    ```bash
+    ```
     curl -X GET http://localhost:8888/books
     ```
 
     - POST: Add a new book
 
-    ```bash
+    ```
     curl -X POST http://localhost:8888/books -H "Content-Type: application/json" -d '{"title": "Python Basics", "author": "John Doe"}'
 
 ```
@@ -193,19 +197,19 @@ Use an HTTP client (e.g., `curl`, `PowerShell` or `Postman`) to interact with th
 ```
     - GET: List all borrowers
 
-    ```bash
+    ```
     curl -X GET http://localhost:8888/borrowers
     ```
 
     - GET: List all books borrowed per userid
 
-    ```bash
+    ```
     curl -X GET http://localhost:8888/borrowers/<id>
     ```
 
     - POST: Add a new borrower
 
-    ```bash
+    ```
     curl -X POST http://localhost:8888/borrowers -H "Content-Type: application/json" -d '{"name": "Jane Smith", "email": "jane.smith@example.com"}'
     ```
 
@@ -215,19 +219,19 @@ Use an HTTP client (e.g., `curl`, `PowerShell` or `Postman`) to interact with th
 
     - GET: Retrieve all borrowed books
 
-    ```bash
+    ```
     curl -X GET http://localhost:8888/borrowed-books
     ```
 
     - GET: Retrieve books borrowed by a specific borrower
 
-    ```bash
+    ```
     curl -X GET http://localhost:8888/borrowed-books/1
     ```
 
     - POST: Record a book borrowing event
 
-    ```bash
+    ```
     curl -X POST http://localhost:8888/borrowed-books -H "Content-Type: application/json" -d '{"borrower_id": 1, "book_id": 2}'
     ```
 
