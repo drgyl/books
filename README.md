@@ -86,7 +86,7 @@ The **Library Management System** is a Python-based application that provides an
         Description: Tracks the number of active SQLite database connections.
 
         Attributes:
-        
+
             - db.name: The name of the database (library.db).
 
         Purpose: Monitors the lifecycle of database connections to ensure proper resource management.
@@ -118,11 +118,12 @@ Run the unit tests using pytest:
     ```
     pytest -v tests/
     ```
+
 Run the integration tests using python:
 
     ```
     python -m unittest tests/test_integration.py -v
-    ```    
+    ```  
 
 ## Project Structure
 
@@ -134,8 +135,8 @@ library-management-system/
 ├── tests/
 │   ├── test_main.py        # Unit tests for the HTTP server
 │   ├── test_database.py    # Unit tests for the database
-│   ├── test_integration.py # Unit tests for the database
-├── [README.md]             # Project documentation
+│   ├── test_integration.py # Integration tests for the application
+├── README.md               # Project documentation
 └── requirements.txt        # Python dependencies (if any)
 ```
 
@@ -145,7 +146,7 @@ library-management-system/
 
 Run the following command to start the server:
 
-    ```
+    ```bash
     python src/main.py
     ```
 
