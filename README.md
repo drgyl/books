@@ -115,15 +115,11 @@ The **Library Management System** is a Python-based application that provides an
 
 Run the unit tests using pytest:
 
-    ```
-    pytest -v tests/
-    ```
+    ```pytest -v tests/```
 
 Run the integration tests using python:
 
-    ```
-    python -m unittest tests/test_integration.py -v
-    ```  
+    ```python -m unittest tests/test_integration.py -v```
 
 ## Project Structure
 
@@ -146,9 +142,7 @@ library-management-system/
 
 Run the following command to start the server:
 
-    ```bash
-    python src/main.py
-    ```
+    ```python src/main.py```
 
 The server will start on http://localhost:8888.
 
@@ -201,35 +195,26 @@ Use an HTTP client (e.g., `curl`, `PowerShell` or `Postman`) to interact with th
 ```
     - GET: List all books
 
-    ```
-    curl -X GET http://localhost:8888/books
-    ```
+    ```curl -X GET http://localhost:8888/books```
 
     - POST: Add a new book
 
-    ```
-    curl -X POST http://localhost:8888/books -H "Content-Type: application/json" -d '{"title": "Python Basics", "author": "John Doe"}'
+    ```curl -X POST http://localhost:8888/books -H "Content-Type: application/json" -d '{"title": "Python Basics", "author": "John Doe"}' ```
 
 ```
 /borrowers
 ```
     - GET: List all borrowers
 
-    ```
-    curl -X GET http://localhost:8888/borrowers
-    ```
+    ```curl -X GET http://localhost:8888/borrowers```
 
     - GET: List all books borrowed per userid
 
-    ```
-    curl -X GET http://localhost:8888/borrowers/<id>
-    ```
+    ```curl -X GET http://localhost:8888/borrowers/<id>```
 
     - POST: Add a new borrower
 
-    ```
-    curl -X POST http://localhost:8888/borrowers -H "Content-Type: application/json" -d '{"name": "Jane Smith", "email": "jane.smith@example.com"}'
-    ```
+    ```curl -X POST http://localhost:8888/borrowers -H "Content-Type: application/json" -d '{"name": "Jane Smith", "email": "jane.smith@example.com"}' ```
 
 ```
 /borrowed-books
@@ -237,21 +222,15 @@ Use an HTTP client (e.g., `curl`, `PowerShell` or `Postman`) to interact with th
 
     - GET: Retrieve all borrowed books
 
-    ```
-    curl -X GET http://localhost:8888/borrowed-books
-    ```
+    ```curl -X GET http://localhost:8888/borrowed-books```
 
     - GET: Retrieve books borrowed by a specific borrower
 
-    ```
-    curl -X GET http://localhost:8888/borrowed-books/1
-    ```
+    ```curl -X GET http://localhost:8888/borrowed-books/1```
 
     - POST: Record a book borrowing event
 
-    ```
-    curl -X POST http://localhost:8888/borrowed-books -H "Content-Type: application/json" -d '{"borrower_id": 1, "book_id": 2}'
-    ```
+    ```curl -X POST http://localhost:8888/borrowed-books -H "Content-Type: application/json" -d '{"borrower_id": 1, "book_id": 2}' ```
 
 ## License
 This project is licensed under the MIT License. See the LICENSE file for details.
