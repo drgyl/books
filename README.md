@@ -48,30 +48,39 @@ The **Library Management System** is a Python-based application that provides an
     - "http.server.requests"
 
         Type: Counter
+
         Description: Counts the total number of HTTP requests handled by the server.
+
         Attributes:
-            http.method: The HTTP method (GET, POST).
-            http.route: The requested route.
-            http.status_code: The HTTP response status code.
-            http.status_category: The status code category (e.g., 2xx, 4xx).
+            - http.method: The HTTP method (GET, POST).
+            - http.route: The requested route.
+            - http.status_code: The HTTP response status code.
+            - http.status_category: The status code category (e.g., 2xx, 4xx).
+
         Purpose: Tracks the volume of HTTP requests and categorizes them by status code.
 
     - "http.request.duration.ms"
 
         Type: Histogram
+
         Description: Measures the duration of HTTP requests in milliseconds.
+        
         Attributes:
-            http.method: The HTTP method (GET, POST).
-            http.route: The requested route (e.g., /books, /borrowers).
-            http.status_code: The HTTP response status code (e.g., 200, 404).
+            - http.method: The HTTP method (GET, POST).
+            - http.route: The requested route (e.g., /books, /borrowers).
+            - http.status_code: The HTTP response status code (e.g., 200, 404).
+
         Purpose: Provides insights into the performance of HTTP request handling.
 
     - "db.connections.active"
     
         Type: UpDownCounter
+
         Description: Tracks the number of active SQLite database connections.
+
         Attributes:
-            db.name: The name of the database (library.db).
+            - db.name: The name of the database (library.db).
+
         Purpose: Monitors the lifecycle of database connections to ensure proper resource management.
 
 ## Installation
