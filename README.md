@@ -40,9 +40,9 @@ The **Library Management System** is a Python-based application that provides an
 - **OpenTelemetry**:
 
     ***Spans***:
-    - HTTP spans: "HTTP GET" and "HTTP POST" to capture lifecycle of HTTP requests, including route handling and response generation
+    - HTTP spans: "HTTP GET" and "HTTP POST" to capture lifecycle of HTTP requests, including route handling and response generation.
 
-    - DB spans: capturing all database queries. tracking the execution and ensuring proper database interaction ("ListBooksQuery", "ListBorrowerQuery", "GetBorrowerQuery", "AddBookQuery", "CreateBorrowerQuery", "BorrowBookQuery")
+    - DB spans: capturing all database queries and tracking the execution and ensuring proper database interaction ("ListBooksQuery", "ListBorrowerQuery", "GetBorrowerQuery", "AddBookQuery", "CreateBorrowerQuery", "BorrowBookQuery").
 
     ***Metrics***:
     - "http.server.requests"
@@ -53,7 +53,7 @@ The **Library Management System** is a Python-based application that provides an
 
         Attributes:
 
-            - http.method: The HTTP method (GET, POST).
+            - http.method: The HTTP method (GET or POST).
 
             - http.route: The requested route.
 
@@ -71,9 +71,9 @@ The **Library Management System** is a Python-based application that provides an
 
         Attributes:
 
-            - http.method: The HTTP method (GET, POST).
+            - http.method: The HTTP method (GET or POST).
 
-            - http.route: The requested route (e.g., /books, /borrowers).
+            - http.route: The requested route (e.g., /books, /borrowers, /borrowed-books).
 
             - http.status_code: The HTTP response status code (e.g., 200, 404).
 
