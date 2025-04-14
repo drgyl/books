@@ -75,9 +75,8 @@ tests/test_main.py::test_invalid_http_methods[DELETE-/borrowed-books-body5-Metho
 
 import pytest
 from unittest.mock import Mock, patch
-from http.server import BaseHTTPRequestHandler
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from io import BytesIO
-# import socket
 import json
 
 import sys
